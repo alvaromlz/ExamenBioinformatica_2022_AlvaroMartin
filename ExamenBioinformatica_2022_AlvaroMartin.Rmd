@@ -1,0 +1,212 @@
+---
+title: "ExamenBioinformatica_2022_AlvaroMartinLozano"
+author: "Álvaro Martín Lozano"
+date: "1/31/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# **EXAMEN BIOINFORMÁTICA MIDI 2022**
+
+
+### **EJERCICIO 1**: Comandos de Linux
+
+**¿Cuántas palabras hay en el fichero?**
+*Comando* -> wc genes.txt
+
+EL segundo valor que devuelve esta función corresponde con el número total de palabras (podemos contar palabras de una misma línea porque están separadas por tabulados).
+
+**¿Cómo cambiarías todos los tabulados por guiones?**
+*Comando* -> cat genes.txt | sed 's/\t/-/g/'
+
+El comando sed nos permite cambiar caracteres o separadores por otros que queramos. La "g" del final indica que se aplique dicho comando de forma general, a todos los tabulados que aparecen.
+
+**¿Cómo cambiarías solo la primera aparición?**
+*Comando* -> cat genes.txt | sed 's/\t/-/'
+
+De esta forma, al no incluir el argumento "g", se aplicará solamente a las primeras apariciones del tabulado en cada línea.
+
+**¿Cómo buscarías todos los genes excepto el gen llamado DSTYK?**
+*Comando* -> cat genes.txt | grep -v DSTYK
+
+Añadiendo el argumento "-v", nos mostrará todos los genes menos DSTYK.
+
+
+## DataSet "Weather"
+Primero cargamos los paquetes necesarios y creamos un data frame con los datos de weather:
+```{r}
+library(tidyverse)
+library(nycflights13)
+clima <- nycflights13::weather
+```
+
+
+### **EJERCICIO 2**: Preguntas básicas
+
+#### **Ej. 2A**: Columnas y registros del dataset
+```{r}
+print(paste0("Este dataset tiene: ", ncol(clima), " columnas."))
+print(paste0("Este dataset tiene: ", nrow(clima), " registros."))
+```
+
+#### **Ej. 2B**: "Origin" diferentes y número de registros de cada uno
+Este data set tiene 3 areopuertos de origen ("origin") diferentes (EWR, JFK y LGA), cada uno de los cuales contiene el número de registros que se indica a continuación:
+```{r}
+table(clima$origin)
+```
+
+#### **Ej. 2C**: Mediana y Media de distintas variables del aeropuerto LGA
+```{r}
+mediana_speed <- median(clima$wind_speed[clima$origin=="LGA"], na.rm=T)
+media_pressure <- mean(clima$pressure[clima$origin=="LGA"], na.rm=T)
+print(paste0("En LGA, la mediana de 'wind_speed' fue: ", mediana_speed))
+print(paste0("En LGA, la media de 'preassure' fue: ", media_pressure))
+```
+
+#### **Ej. 2D**: Calcular para cada mes la media de "wind_speed" y "wind_gust", y el número de casos
+Primero eliminamos los NA de la columna "wind_gust", creando un nuevo data frame ("clima_complete"), con el que trabajaremos de aquí en adelante. Comprobamos antes y después de dicha operación que se han eliminado los 20778 NA que aparecían al principio.
+```{r}
+table(is.na(clima$wind_gust))
+clima_complete <- clima[!is.na(clima$wind_gust),]
+table(is.na(clima_complete$wind_gust))
+```
+Creo un "for" para que, para cada mes, me calcule los mismos 3 parámetros pedidos, y los muestre por pantalla:
+```{r}
+for (mes in 1:12)
+{
+  media_gust <- mean(clima_complete$wind_gust[clima_complete$month==mes])
+  print(paste0("La ráfaga de viento media en el mes ", month.name[mes], " es: ", media_gust))
+  media_speed <- mean(clima_complete$wind_speed[clima_complete$month==mes], na.rm=T)
+  print(paste0("La velocidad del viento media en el mes ", month.name[mes], " es: ", media_speed))
+  casos <- table(clima_complete$month[clima_complete$month==mes])
+  print(paste0("El total de casos en el mes ", month.name[mes], " es: ", casos))
+  print(" ")
+}
+```
+
+
+
+### **EJERCICIO 3**: Plots
+
+#### **Ej. 3A**: Construir los plots
+Primero, para poder trabajar de forma independiente con los datos de cada aeropuerto, creo 3 nuevas data frame, una para cada aeropuerto de origen ("origin"):
+```{r}
+clima_EWR <- clima_complete[clima_complete$origin=="EWR",]
+clima_JFK <- clima_complete[clima_complete$origin=="JFK",]
+clima_LGA <- clima_complete[clima_complete$origin=="LGA",]
+```
+A continuación, represento la distribución de la temperatura en cada mes, para cada aeropuerto.
+```{r}
+par(mfrow=c(1,3))
+boxplot(clima_EWR$temp ~ clima_EWR$month,
+     main="EWR", xlab="Months", ylab="ªC", col="red")
+boxplot(clima_JFK$temp ~ clima_JFK$month,
+     main="JFK", xlab="Months", ylab="ªC", col="green")
+boxplot(clima_LGA$temp ~ clima_LGA$month,
+     main="LGA", xlab="Months", ylab="ªC", col="blue")
+par(mfrow=c(1,1))
+```
+Como podemos observar, en los tres aeropuertos se alcanzan temperaturas máximas en los meses de verano.
+
+
+#### **Ej. 3B**: Función para reproducir los plots
+```{r}
+plot_meteo <- function(data,meteo,titulo,unidades)
+{
+  boxplot(meteo ~ data$month,
+          main=titulo, xlab="Months", ylab=unidades, col="red")
+  media <- c(mean(clima_EWR$temp,na.rm=T), mean(clima_LGA$temp,na.rm=T), mean(clima_JFK$temp,na.rm=T))
+  return(media)
+  print(media)
+}
+```
+Prueba de la función, con los distintos datasets de los 3 "origins":
+```{r}
+plot_meteo(clima_EWR, clima_EWR$temp, "Punto de rocío EWR", "ªF")
+plot_meteo(clima_JFK, clima_JFK$temp, "Punto de rocío JFK", "ªF")
+plot_meteo(clima_LGA, clima_LGA$temp, "Punto de rocío LGA", "ªF")
+```
+Otra prueba con la función; en este caso, con la variable "humid" (humedad):
+```{r}
+plot_meteo(clima_EWR, clima_EWR$humid, "Humedad EWR", "Relative humidity")
+plot_meteo(clima_JFK, clima_JFK$humid, "Humedad JFK", "Relative humidity")
+plot_meteo(clima_LGA, clima_LGA$humid, "Humedad LGA", "Relative humidity")
+```
+
+
+### **EJERCICIO 4**: El día de mi cumpleaños:
+Si bien el día de mi cumpleaños es el 16 de agosto, he escogido la fecha deñ 14 de agosto por ser una que tenía suficientesdatos recogidos para los tres aeropuertos.
+
+#### **Ej. 4A**: Relación entre la temperatura y la humedad en cada uno de los origins:
+Para el aeropuerto ("origin") **EWR**:
+```{r}
+clima_EWR_cumple <- clima_EWR[clima_EWR$month==8 & clima_EWR$day==14,]
+ggplot(data=clima_EWR_cumple) +
+  geom_point(mapping = aes(x=temp, y=humid), col="red")
+#Test de correlación
+cor.test(clima_EWR_cumple$temp, clima_EWR_cumple$humid)
+```
+El test de correlación empleado (para ver la correlación estadística entr las variables temperatura y humedad) nos devuelve un **p-value < 0.05**, lo que indica que sí se encuentra una relación significativa entre ambas variables. Concretamente, si observamos el Scatterplot generado, ppodemos visualizar una tendencia a disminuir la humedad conforme aumenta la temperatura (excepto a algunos outliers).
+
+Para el aeropuerto ("origin") **JFK**:
+```{r}
+clima_JFK_cumple <- clima_JFK[clima_JFK$month==8 & clima_JFK$day==14,]
+ggplot(data=clima_JFK_cumple) +
+  geom_point(mapping = aes(x=temp, y=humid), col="green")
+#Test de correlación
+cor.test(clima_JFK_cumple$temp, clima_JFK_cumple$humid)
+```
+En este caso, el test de correlción nos devuelve un **p-value << 0.05**, más pequeño que en el caso anterior, lo que nos muestra una fuerte asociación significativa entre las variables temperatura y humedad en este aeropuerto de JFK. Además, al observar el Scatterplot, se visualiza con mayor facilidad esta asociación de disminución de la humedad con el aumento de la temperatura.
+
+Para el aeropuerto ("origin") **LGA**:
+```{r}
+clima_LGA_cumple <- clima_LGA[clima_LGA$month==8 & clima_LGA$day==14,]
+ggplot(data=clima_LGA_cumple) +
+  geom_point(mapping = aes(x=temp, y=humid), col="blue")
+#Test de correlación
+cor.test(clima_LGA_cumple$temp, clima_LGA_cumple$humid)
+```
+En este caso, el test de correlación nos devuelve un valor **p-value > 0.05**, lo que indica que es no significativo, y no habría correlación significativa entre ambas variables. Esto se puede comporbar en el Scatterplot, donde no hay una asociación clara.
+
+
+#### **Ej. 4B**: Relación entre la temperatura y la humedad en cada uno de los "origins":
+Como la temperatura es una variable numérica, puedo realizar un T de Student (test estadístico) para comparar las medias de temperatura de dos grupos: los aeropuertos LGA y JFK.
+```{r}
+t.test(clima_LGA_cumple$temp, clima_JFK_cumple$temp)
+```
+Vemos que el t-test nos devuelve un **p-value >> 0.05**, lo que indica que no hay diferencias estadísticamente significativas entre las temperaturas de ambos aeropuertos el día 14 de agosto.
+Para corroborar esta información estadística, podemos representar los boxplots de la dispersión de la temperatura en ambos aeropuertos aquel día.
+```{r}
+par(mfrow=c(1,2))
+boxplot(clima_LGA_cumple$temp ~ clima_LGA_cumple$origin,
+        main="Temp en LGA el 14/08", xlab="LGA", ylab="Temperatura (ªF)",
+        col="blue", ylim=c(60,80))
+boxplot(clima_JFK_cumple$temp ~ clima_JFK_cumple$origin,
+        main="Temp en JFK el 14/08", xlab="JFK", ylab="Temperatura (ªF)",
+        col="green", ylim=c(60,80))
+par(mfrow=c(1,1))
+```
+Podemos comprobar, al comparar amobs boxplots, que apenas hay diferencias en la dispersión de las temperaturas, presentando ambos medianas (y valores de máximos y mínimos) muy similares. Solo el aeropuerto de JFK tendría uaa ligera mayor temperatura máxima registrada aquel día.
+
+
+### **EJERCICIO 5**: Volcano Plot
+
+#### **Ej. 5A**: Punto con mayor valor absoluto de Fold Change
+En valores absolutos, el punto con mayor Fold Change corresponde con el punto morado (genes down-regulated) más situado a la izquierda del eje X (log(FoldChange)<0). Concretamente, el que está a unas coordenadas de (X~=8, Y=5). Esto significa que, en términos cuantitativos relativos, ese gen es el que está más down-regulated (expresión genética más reducida) en el grupo experimental que se haya estudiado frente al grupo control.
+No obstante, lo interesante es compaginar la sobre/infra-expresión (en términos de abundancia relativa o Fold Change) junto con la expresión diferencial significativa entre ambos grupos. Por tanto, el **gen Csn1s2b** sería el más indicado, pues tiene un Fold Change muy similar (casi máximo), pero a la vez tiene la máxima diferencial estadísticamente significativa entre los dos grupos.
+
+#### **Ej. 5B**: Gen sobreexpresado más significativo
+Dentro del grupo de los genes sobreexpresados (up-regulated), en el lado derecho de la gráfica (log(FoldChange)>0), el gen con una mayor significancia estadística en cuanto a expresión diferencial (mayor -log10(p-value)) es el **gen Rbp1**.
+
+
+### **URL de GitHub**
+Pincha [aquí](https://github.com/alvaromlz/ExamenBioinformatica_2022_AlvaroMartin.git) para dirigirse al proyecto online compartido en GitHub del Examen.
+
+
+```{r}
+sessionInfo()
+```
+
